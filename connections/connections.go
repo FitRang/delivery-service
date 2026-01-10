@@ -1,6 +1,7 @@
 package connections
 
 import (
+	"log"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -45,17 +46,23 @@ func (h *Hub) Unregister(c *Client) {
 	}
 }
 
-func (h *Hub) SendToUser(userID string, msg []byte) {
+func (h *Hub) SendToUser(email string, msg []byte) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
-	if conns, ok := h.clients[userID]; ok {
-		for c := range conns {
-			select {
-			case c.Send <- msg:
-			default:
-				// drop if blocked
-			}
+	conns, ok := h.clients[email]
+	if !ok {
+		log.Println("No active WS connection for:", email)
+		return
+	}
+
+	log.Printf("Delivering message to %s (%d connections)", email, len(conns))
+
+	for c := range conns {
+		select {
+		case c.Send <- msg:
+		default:
+			log.Println("Send buffer full for:", email)
 		}
 	}
 }

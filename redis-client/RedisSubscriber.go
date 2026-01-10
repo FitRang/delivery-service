@@ -3,27 +3,33 @@ package cache
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"github.com/FitRang/delivery-service/connections"
+	"log"
 )
 
-type NotificationMessage struct {
-	UserID  string          `json:"user_id"`
-	Type    string          `json:"type"`
-	Payload json.RawMessage `json:"payload"`
+type UserIdentity struct {
+	Username string `json:"username"`
+	Email    string `json:"email"`
+}
+
+type Message struct {
+	Sender   UserIdentity `json:"sender"`
+	Receiver UserIdentity `json:"receiver"`
+	Message  string       `json:"message"`
 }
 
 func (rdb *RedisClient) StartRedisSubscriber(ctx context.Context, hub *connections.Hub) {
-	sub := rdb.rdb.Subscribe(ctx, "users:*")
+	sub := rdb.rdb.Subscribe(ctx, "user:*")
 	ch := sub.Channel()
 
 	for msg := range ch {
-		var notif NotificationMessage
+		var notif Message
 		if err := json.Unmarshal([]byte(msg.Payload), &notif); err != nil {
 			log.Println("invalid message:", err)
 			continue
 		}
+		log.Printf("%v", notif)
 
-		hub.SendToUser(notif.UserID, []byte(msg.Payload))
+		hub.SendToUser(notif.Receiver.Email, []byte(msg.Payload))
 	}
 }
