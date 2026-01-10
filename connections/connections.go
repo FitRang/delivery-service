@@ -9,8 +9,8 @@ import (
 
 type Client struct {
 	Email string
-	Conn   *websocket.Conn
-	Send   chan []byte
+	Conn  *websocket.Conn
+	Send  chan []byte
 }
 
 type Hub struct {
@@ -56,8 +56,6 @@ func (h *Hub) SendToUser(email string, msg []byte) {
 		return
 	}
 
-	log.Printf("Delivering message to %s (%d connections)", email, len(conns))
-
 	for c := range conns {
 		select {
 		case c.Send <- msg:
@@ -65,4 +63,17 @@ func (h *Hub) SendToUser(email string, msg []byte) {
 			log.Println("Send buffer full for:", email)
 		}
 	}
+}
+
+func (h *Hub) Close() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	for _, conns := range h.clients {
+		for c := range conns {
+			close(c.Send)
+			c.Conn.Close()
+		}
+	}
+	h.clients = make(map[string]map[*Client]bool)
 }

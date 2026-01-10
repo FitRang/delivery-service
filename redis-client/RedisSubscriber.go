@@ -18,9 +18,14 @@ type Message struct {
 	Message  string       `json:"message"`
 }
 
-func (rdb *RedisClient) StartRedisSubscriber(ctx context.Context, hub *connections.Hub) {
-	sub := rdb.rdb.Subscribe(ctx, "user:*")
+func (rdb *RedisClient) StartRedisSubscriber(
+	ctx context.Context,
+	hub *connections.Hub,
+) {
+	sub := rdb.rdb.PSubscribe(ctx, "user:*")
 	ch := sub.Channel()
+
+	log.Println("Redis subscriber started (pattern: user:*)")
 
 	for msg := range ch {
 		var notif Message
@@ -28,8 +33,13 @@ func (rdb *RedisClient) StartRedisSubscriber(ctx context.Context, hub *connectio
 			log.Println("invalid message:", err)
 			continue
 		}
-		log.Printf("%v", notif)
 
-		hub.SendToUser(notif.Receiver.Email, []byte(msg.Payload))
+		final, err := finalMessage(notif)
+		if err != nil {
+			log.Println("invalid message:", err)
+			continue
+		}
+
+		hub.SendToUser(notif.Receiver.Email, []byte(final))
 	}
 }
