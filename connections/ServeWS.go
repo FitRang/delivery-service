@@ -13,7 +13,7 @@ var upgrader = websocket.Upgrader{
 }
 
 func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
-	email := strings.ToLower(strings.TrimSpace(r.Header.Get("X-User-Email")))
+	email := strings.ToLower(strings.TrimSpace(r.Header.Get("x-user-email")))
 	if email == "" {
 		http.Error(w, "missing user-email", http.StatusBadRequest)
 		return
